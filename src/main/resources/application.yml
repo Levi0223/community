@@ -15,6 +15,22 @@ spring:
       maximum-pool-size: 15
       minimum-idle: 5
       idle-timeout: 30000
+  mail:
+    host: smtp.sina.com
+    port: 465
+    username: leviyu023@sina.com
+    password: f6c66ab52c8a699c
+    protocol: smtps
+    properties:
+      mail:
+        smtl:
+          auth: true
+        smtp:
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            enable: true
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.levi.community.entity
@@ -24,4 +40,8 @@ mybatis:
 logging:
   level:
     com.levi.community: debug
+
+community:
+  path:
+    domain: http://localhost:8080
 
