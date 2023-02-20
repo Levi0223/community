@@ -1,8 +1,10 @@
 package com.levi.community;
 
 import com.levi.community.dao.DiscussPostMapper;
+import com.levi.community.dao.LoginTicketMapper;
 import com.levi.community.dao.UserMapper;
 import com.levi.community.entity.DiscussPost;
+import com.levi.community.entity.LoginTicket;
 import com.levi.community.entity.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,9 @@ public class MapperTests {
     private UserMapper userMapper;
     @Autowired
     private DiscussPostMapper discussPostMapper;
+
+    @Autowired
+    private LoginTicketMapper loginTicketMapper;
 
     @Test
     void testSelectUserById() {
@@ -58,5 +63,23 @@ public class MapperTests {
         }
         int rows = discussPostMapper.selectDiscussPostRows(149);
         System.out.println(rows);
+    }
+
+    @Test
+    void testInsertLoginTicket() {
+        LoginTicket loginTicket = new LoginTicket();
+        loginTicket.setUserId(101);
+        loginTicket.setTicket("qwe");
+        loginTicket.setExpired(new Date(System.currentTimeMillis() + 1000 * 60 * 10));
+        loginTicket.setStatus(0);
+        loginTicketMapper.insertLoginTicket(loginTicket);
+    }
+
+    @Test
+    void testSelectAndUpdateLoginTicket() {
+        LoginTicket loginTicket = loginTicketMapper.selectByTicket("qwe");
+        System.out.println(loginTicket);
+        loginTicketMapper.updateStatus("qwe", 1);
+        System.out.println(loginTicketMapper.selectByTicket("qwe"));
     }
 }

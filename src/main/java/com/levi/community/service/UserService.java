@@ -1,6 +1,8 @@
 package com.levi.community.service;
 
+import com.levi.community.dao.LoginTicketMapper;
 import com.levi.community.dao.UserMapper;
+import com.levi.community.entity.LoginTicket;
 import com.levi.community.entity.User;
 import com.levi.community.util.CommunityConstant;
 import com.levi.community.util.CommunityUtil;
@@ -21,12 +23,15 @@ import java.util.Random;
 public class UserService implements CommunityConstant {
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private LoginTicketMapper loginTicketMapper;
 
     @Autowired
     private MailClient mailClient;
 
     @Autowired
     private TemplateEngine templateEngine;
+
 
     @Value("${community.path.domain}")
     private String domain;
@@ -97,6 +102,51 @@ public class UserService implements CommunityConstant {
         } else {
             return ACTIVATE_FAILURE;
         }
+    }
+
+    public Map<String, Object> login(String username, String password, int expiredSeconds) {
+        Map<String, Object> map = new HashMap<>();
+        if (StringUtils.isBlank(username)) {
+            map.put("usernameMsg", "Account cannot be empty");
+            return map;
+        }
+        if (StringUtils.isBlank(password)) {
+            map.put("passwordMsg", "Password cannot be empty");
+            return map;
+        }
+        User user = userMapper.selectByName(username);
+        if (user == null) {
+            map.put("usernameMsg", "This account does not exists");
+            return map;
+        }
+        if (user.getStatus() == 0) {
+            map.put("usernameMsg", "This account is not activated");
+            return map;
+        }
+        password = CommunityUtil.md5(password + user.getSalt());
+        if (!user.getPassword().equals(password)) {
+            map.put("passwordMsg", "Incorrect password");
+            return map;
+        }
+
+        LoginTicket loginTicket = new LoginTicket();
+        loginTicket.setUserId(user.getId());
+        loginTicket.setTicket(CommunityUtil.generateUUID());
+        loginTicket.setStatus(0);
+        loginTicket.setExpired(new Date(System.currentTimeMillis() + expiredSeconds * 1000L));
+        loginTicketMapper.insertLoginTicket(loginTicket);
+        map.put("ticket", loginTicket.getTicket());
+
+
+        return map;
+    }
+
+    public void logout(String ticket) {
+        loginTicketMapper.updateStatus(ticket, 1);
+    }
+
+    public LoginTicket findLoginTicket(String ticket) {
+        return loginTicketMapper.selectByTicket(ticket);
     }
 
 }
