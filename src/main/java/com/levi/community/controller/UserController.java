@@ -1,5 +1,6 @@
 package com.levi.community.controller;
 
+import com.levi.community.annotation.annotation.LoginRequired;
 import com.levi.community.entity.User;
 import com.levi.community.service.UserService;
 import com.levi.community.util.CommunityUtil;
@@ -21,6 +22,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Map;
 
 @Component
 @RequestMapping("/user")
@@ -37,11 +39,13 @@ public class UserController {
     @Autowired
     private HostHolder hostHolder;
 
+    @LoginRequired
     @RequestMapping(path = "/setting", method = RequestMethod.GET)
     public String getSettingPage() {
         return "/site/setting";
     }
 
+    @LoginRequired
     @RequestMapping(path = "/upload", method = RequestMethod.POST)
     public String uploadHeader(MultipartFile headerImage, Model model) {
         if (headerImage == null) {
@@ -89,7 +93,7 @@ public class UserController {
         }
     }
 
-    @RequestMapping(path = "/changePassword", method = RequestMethod.POST)
+    /*@RequestMapping(path = "/changePassword", method = RequestMethod.POST)
     public String changePassword(String originalPassword, String newPassword, String confirmPassword, Model model) {
         User user = hostHolder.getUser();
         if (!user.getPassword().equals(CommunityUtil.md5(originalPassword + user.getSalt()))) {
@@ -107,6 +111,19 @@ public class UserController {
         String password = CommunityUtil.md5(newPassword + user.getSalt());
         userService.updatePassword(user.getId(), password);
         return "redirect:/logout";
+    }*/
+
+    @RequestMapping(path = "/updatePassword", method = RequestMethod.POST)
+    public String updatePassword(String oldPassword, String newPassword, Model model) {
+        User user = hostHolder.getUser();
+        Map<String, Object> map = userService.updatePassword(user.getId(), oldPassword, newPassword);
+        if (map == null || map.isEmpty()) {
+            return "redirect:/logout";
+        } else {
+            model.addAttribute("oldPasswordMsg", map.get("oldPasswordMsg"));
+            model.addAttribute("newPasswordMsg", map.get("newPasswordMsg"));
+            return "/site/setting";
+        }
     }
 
 }
