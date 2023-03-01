@@ -31,6 +31,10 @@ spring:
             required: true
           ssl:
             enable: true
+  redis:
+    database: 11
+    host: localhost
+    port: 6379
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.levi.community.entity
