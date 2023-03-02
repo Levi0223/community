@@ -6,11 +6,13 @@ import com.levi.community.service.UserService;
 import com.levi.community.util.CommunityConstant;
 import com.levi.community.util.CommunityUtil;
 import com.levi.community.util.MailClient;
+import com.levi.community.util.RedisKeyUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +27,7 @@ import javax.servlet.http.HttpSession;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Controller
 public class LoginController implements CommunityConstant {
@@ -37,6 +40,8 @@ public class LoginController implements CommunityConstant {
     private TemplateEngine templateEngine;
     @Autowired
     private MailClient mailClient;
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Value("${server.servlet.context-path}")
     private String contextPath;
@@ -54,9 +59,16 @@ public class LoginController implements CommunityConstant {
         return "/site/login";
     }
 
-    @RequestMapping(value = "/login", method = RequestMethod.POST)
-    public String login(String username, String password, String code, boolean rememberMe, Model model, HttpSession session, HttpServletResponse response) {
-        String kaptcha = (String) session.getAttribute("kaptcha");
+    @PostMapping("/login")
+    public String login(String username, String password, String code, boolean rememberMe, Model model/*, HttpSession session*/,
+                        HttpServletResponse response, @CookieValue("kapachaOwner") String kapachaOwner) {
+//        String kaptcha = (String) session.getAttribute("kaptcha");
+        String kaptcha = null;
+        if (StringUtils.isNotBlank(kapachaOwner)) {
+            String kaptchaKey = RedisKeyUtil.getKaptchaKey(kapachaOwner);
+            kaptcha = (String) redisTemplate.opsForValue().get(kaptchaKey);
+        }
+
         // check verification
         if (StringUtils.isBlank(kaptcha) || StringUtils.isBlank(code) || !kaptcha.equalsIgnoreCase(code)) {
             model.addAttribute("codeMsg", "Incorrect verification code");
@@ -111,12 +123,20 @@ public class LoginController implements CommunityConstant {
         return "/site/operate-result";
     }
 
-    @RequestMapping(path = "/kaptcha", method = RequestMethod.GET)
-    public void getKaptcha(HttpServletResponse response, HttpSession session) {
+    @GetMapping("/kaptcha")
+    public void getKaptcha(HttpServletResponse response/*, HttpSession session*/) {
         String text = kaptchaProducer.createText();
         BufferedImage image = kaptchaProducer.createImage(text);
 
-        session.setAttribute("kaptcha", text);
+//        session.setAttribute("kaptcha", text);
+        String kapachaOwner = CommunityUtil.generateUUID();
+        Cookie cookie = new Cookie("kapachaOwner", kapachaOwner);
+        cookie.setMaxAge(60);
+        cookie.setPath(contextPath);
+        response.addCookie(cookie);
+        String kaptchaKey = RedisKeyUtil.getKaptchaKey(kapachaOwner);
+        redisTemplate.opsForValue().set(kaptchaKey, text, 60, TimeUnit.SECONDS);
+
         response.setContentType("image/png");
         try {
             ServletOutputStream os = response.getOutputStream();
